@@ -12,6 +12,8 @@ export default async function Home() {
         // 2. Pass 'project' as a prop here!
         <ProjectItem key={project.id} project={project} />
       ))}
+
+      <h1>helklasdfkjasdjkfkl</h1>
     </main>
   );
 }

@@ -93,3 +93,12 @@ Our database enforces these rules:
 - **The Solution:** - Wrap every Server Action in `try/catch` blocks.
   - Instead of letting the application crash, return a friendly error object to the UI to inform the user of the failure.
 - **Why it matters:** A professional app must fail gracefully, keeping the user informed rather than leaving them with a broken interface.
+
+## 13. Troubleshooting: The "Clean Slate" Workflow
+
+If you encounter a `500 Internal Server Error`, reset your build with these commands:
+
+1. `rm -rf .next` (Clear temporary memory).
+2. `rm -rf node_modules/.prisma` (Clear old database drivers).
+3. `npx prisma generate` (Re-build the connection bridge).
+4. Restart your development server.

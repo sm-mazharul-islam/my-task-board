@@ -2,8 +2,9 @@
 
 import { PrismaClient } from "../generated/prisma"; // 1. The Bridge
 import { revalidatePath } from "next/cache";
+import { prisma } from "../lib/prisma";
 
-const prisma = new PrismaClient(); // 2. The Shared Instance
+// const prisma = new PrismaClient(); // 2. The Shared Instance
 
 // 3. The Retrieval Function
 export async function getProjects() {

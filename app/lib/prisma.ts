@@ -1,16 +1,22 @@
 // app/lib/prisma.ts
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
-// 1. We create a global variable that tells TypeScript/Next.js:
-// "Look for an existing database connection on the global object."
+const connectionString = process.env.DATABASE_URL;
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
-// 2. We use the existing connection OR create a new one.
-// This is the "Singleton" - it ensures only ONE connection exists.
-export const prisma = globalForPrisma.prisma || new PrismaClient();
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    adapter, // You MUST pass the adapter in Prisma 7
+    log: ["warn", "error"],
+  });
 
-// 3. During development, Next.js 'hot reloads'.
-// This code keeps our database connection 'alive' during those reloads.
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
 }
