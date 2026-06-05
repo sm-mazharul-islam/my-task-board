@@ -1,9 +1,11 @@
+// schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -14,11 +16,11 @@ model User {
 }
 
 model Project {
-  id      String @id @default(uuid())
-  title   String
-  userId  Int
-  user    User   @relation(fields: [userId], references: [id])
-  tasks   Task[]
+  id     String  @id @default(uuid())
+  title  String
+  userId Int?    // Ensure the ? is here
+  user   User?   @relation(fields: [userId], references: [id])
+  tasks  Task[]
 }
 
 model Task {

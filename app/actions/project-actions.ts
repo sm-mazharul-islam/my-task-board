@@ -1,51 +1,71 @@
-"use server";
+"use server"; // Tells Next.js that all exported functions here run exclusively on the server
 
-import { PrismaClient } from "../generated/prisma"; // 1. The Bridge
-import { revalidatePath } from "next/cache";
-import { prisma } from "../lib/prisma";
-
-// const prisma = new PrismaClient(); // 2. The Shared Instance
-
-// 3. The Retrieval Function
+import { revalidatePath } from "next/cache"; // Imports a helper to refresh the UI after data changes
+import { prisma } from "../lib/prisma"; // Imports your shared Prisma client instance
+import { Prisma } from "../generated/prisma"; // 1. Import Prisma
+// 1. Function to retrieve all projects from the database
 export async function getProjects() {
   try {
-    // This is the SQL command being translated:
-    // SELECT * FROM "Project" JOIN "Task" ON ...
     const projects = await prisma.project.findMany({
-      include: {
-        tasks: true, // Tells Prisma to fetch related tasks automatically
-      },
-      orderBy: { title: "asc" },
+      include: { tasks: true },
     });
-
-    return projects; // Returns the data to the UI
+    return projects;
   } catch (error) {
-    console.error("Fetch Error:", error);
-    return []; // Return empty list on failure
+    // THIS WILL REVEAL THE HIDDEN ERROR
+    console.error(
+      "CRITICAL DATABASE ERROR:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    );
+    return [];
   }
 }
 
+// 2. Function to update an existing project's title
 export async function updateProject(id: string, newTitle: string) {
   try {
+    // Updates a specific project record found by its ID
     await prisma.project.update({
-      where: { id: id },
-      data: { title: newTitle },
+      where: { id: id }, // Finds the project using the unique ID
+      data: { title: newTitle }, // Sets the new title provided by the user
     });
-    revalidatePath("/");
-    return { success: true };
+    revalidatePath("/"); // Tells Next.js to re-fetch data for the home page to reflect the update
+    return { success: true }; // Returns a success indicator to the frontend
   } catch (error) {
-    return { success: false, error: "Update failed" };
+    return { success: false, error: "Update failed" }; // Returns an error object if the database update fails
   }
 }
 
+// 3. Function to delete a project from the database
 export async function deleteProject(id: string) {
   try {
+    // Deletes the project record matching the provided ID
     await prisma.project.delete({
-      where: { id: id },
+      where: { id: id }, // Locates the record to be removed
     });
+    revalidatePath("/"); // Refreshes the home page so the deleted project disappears from the UI
+    return { success: true }; // Confirms the deletion to the frontend
+  } catch (error) {
+    return { success: false, error: "Delete failed" }; // Handles cases where deletion might fail (e.g., database lock)
+  }
+}
+
+export async function createProject(formData: FormData) {
+  const title = formData.get("title") as string;
+
+  try {
+    // 2. Cast the data object as UncheckedCreateInput
+    const data = {
+      title: title,
+    } as Prisma.ProjectUncheckedCreateInput;
+
+    await prisma.project.create({
+      data,
+    });
+
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    return { success: false, error: "Delete failed" };
+    console.error("Create Error:", error);
+    return { error: "Failed to create project" };
   }
 }
