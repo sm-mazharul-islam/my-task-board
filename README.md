@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# My Task Board - Learning Project
 
-## Getting Started
+## 1. Concept: The Relational Bridge
 
-First, run the development server:
+We have transitioned from loose, document-based data (NoSQL) to a **Relational Database** (PostgreSQL).
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Normalization:** Data is organized into structured tables (`User`, `Project`, `Task`).
+- **Referential Integrity:** Using "Foreign Keys" (like `userId` and `projectId`) acts as glue, ensuring no data becomes orphaned or disconnected.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 2. Technical Infrastructure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Prisma 7 Architecture:** Utilized `prisma.config.ts` for database connection management, keeping `schema.prisma` strictly for model definitions.
+- **Workflow:**
+  1. **Define:** Blueprint created in `schema.prisma`.
+  2. **Migrate:** Applied changes via `npx prisma migrate dev`.
+  3. **Generate:** Updated the TypeScript bridge with `npx prisma generate`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 3. Database Schema
 
-## Learn More
+Our database enforces these rules:
 
-To learn more about Next.js, take a look at the following resources:
+- **User (1) <-> (N) Project:** One user can own multiple projects.
+- **Project (1) <-> (N) Task:** One project can contain multiple tasks.
+- **Constraints:** Every `Project` must belong to a `User`, and every `Task` must belong to a `Project`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 4. The Server-Side Bridge
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **File:** `app/lib/prisma.ts`
+- **Pattern:** Singleton Pattern.
+- **Why:** This ensures our Next.js application maintains one single, stable connection to the database, preventing connection pool exhaustion during development hot-reloads.
+- **Role:** Exports the `prisma` client used for all database interactions.
 
-## Deploy on Vercel
+## 5. Server Actions (Data Creation Logic)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **File:** `app/actions/project-actions.ts`
+- **Concept:** Server Actions run securely on the server, serving as the communication layer between the UI and the database.
+- **Workflow:**
+  - `prisma.project.create`: Executes the SQL 'INSERT' command.
+  - `revalidatePath`: Clears the Next.js cache to ensure the UI updates instantly after a database change.
+  - `try/catch`: Wraps operations to handle potential database connection or constraint errors gracefully.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 6. The Frontend (UI Layer)
+
+- **File:** `app/components/ProjectForm.tsx`
+- **Concept:** Uses `'use client'` to handle browser-side interactions like form submissions.
+- **Data Flow:** 1. User inputs project title. 2. Form triggers `handleSubmit`. 3. `handleSubmit` calls the server-side `createProject` function. 4. Database updates; `revalidatePath` forces the page to reflect the new data.
+
+## 7. The Lifecycle of a Data Request
+
+- **Request:** The browser sends form data to the Server Action.
+- **Processing:** The Server Action uses the `PrismaClient` (The Bridge) to validate the data against the `schema.prisma` rules.
+- **Persistence:** PostgreSQL stores the record.
+- **Syncing:** The UI is re-rendered to show the new state.
+
+## 8. Data Retrieval (Querying)
+
+- **Concept:** Fetching data on the server before rendering the UI to ensure fast page loads and SEO.
+- **Function:** `prisma.project.findMany()`
+- **Key Features:**
+  - `include`: Performs a SQL JOIN to pull related tasks alongside the project (Eager Loading).
+  - `orderBy`: Handles sorting at the database level for maximum efficiency.
+  - **Async/Await:** Necessary to handle the latency of network requests to the database.
+
+## 9. Data Retrieval Logic (Server Actions)
+
+- **Placement:** Defined in `actions/project-actions.ts`.
+- **Async Pattern:** Handles the delay of network requests by awaiting database responses.
+- **Relational Querying:** Using `include` allows us to fetch related child records (`Tasks`) in a single round-trip, minimizing database load.
+- **Security:** Queries are isolated in 'use server' files, preventing database exposure in the browser.
