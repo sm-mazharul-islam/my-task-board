@@ -102,3 +102,17 @@ If you encounter a `500 Internal Server Error`, reset your build with these comm
 2. `rm -rf node_modules/.prisma` (Clear old database drivers).
 3. `npx prisma generate` (Re-build the connection bridge).
 4. Restart your development server.
+
+---
+
+# Delete the outdated generation and cache
+
+`rm -rf app/generated/prisma`
+`rm -rf .next`
+
+# Rebuild everything
+
+`npx prisma generate`
+`npx prisma db push --force-reset`
+
+---
