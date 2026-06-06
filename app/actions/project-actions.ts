@@ -49,23 +49,35 @@ export async function deleteProject(id: string) {
   }
 }
 
+// app/actions/project-actions.ts
+
 export async function createProject(formData: FormData) {
   const title = formData.get("title") as string;
+  const description = formData.get("description") as string;
 
   try {
-    // 2. Cast the data object as UncheckedCreateInput
+    // 1. Construct the raw data object
     const data = {
-      title: title,
-    } as Prisma.ProjectUncheckedCreateInput;
+      title,
+      description,
+      userId: undefined, // Explicitly undefined
+    };
 
+    // 2. Use 'as unknown' to bridge the type gap
+    // This tells Prisma to treat the object as a raw set of database columns
+    // and stop trying to validate the 'user' relation object.
     await prisma.project.create({
-      data,
+      data: data as unknown as Prisma.ProjectUncheckedCreateInput,
     });
 
     revalidatePath("/");
     return { success: true };
   } catch (error) {
-    console.error("Create Error:", error);
+    // Use the debug log to see the actual error output in your terminal
+    console.error(
+      "FULL DATABASE ERROR:",
+      JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    );
     return { error: "Failed to create project" };
   }
 }
